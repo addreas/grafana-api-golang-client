@@ -71,6 +71,88 @@ func (c Client) WithOrgID(orgID int64) *Client {
 	return &c
 }
 
+type APIError struct {
+	StatusCode int
+	Body       map[string]interface{}
+}
+
+func (e APIError) Error() string {
+	return fmt.Sprintf("status: %d, body: %v", e.StatusCode, e.Body)
+}
+
+func Request[ReqT any, ResT any](c *Client, method, requestPath string, query url.Values, requestBody *ReqT) (*ResT, error) {
+	var err error
+	var requestBytes, responseBytes []byte
+
+	if requestBody != nil {
+		requestBytes, err = json.Marshal(requestBody)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var resp *http.Response
+	// retry logic
+	for n := 0; n <= c.config.NumRetries; n++ {
+		req, err := c.newRequest(method, requestPath, query, bytes.NewReader(requestBytes))
+		if err != nil {
+			return nil, err
+		}
+
+		// Wait a bit if that's not the first request
+		if n != 0 {
+			time.Sleep(time.Second * 5)
+		}
+
+		resp, err = c.client.Do(req)
+
+		// If err is not nil, retry again
+		// That's either caused by client policy, or failure to speak HTTP (such as network connectivity problem). A
+		// non-2xx status code doesn't cause an error.
+		if err != nil {
+			continue
+		}
+
+		defer resp.Body.Close()
+
+		// read the body (even on non-successful HTTP status codes), as that's what the unit tests expect
+		responseBytes, err = ioutil.ReadAll(resp.Body)
+		// if there was an error reading the body, try again
+		if err != nil {
+			continue
+		}
+
+		// Exit the loop if we have something final to return. This is anything < 500, if it's not a 429.
+		if resp.StatusCode < http.StatusInternalServerError && resp.StatusCode != http.StatusTooManyRequests {
+			break
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	// check status code.
+	if resp.StatusCode >= 400 {
+		var errContent map[string]interface{}
+		err := json.Unmarshal(responseBytes, &errContent)
+		if err != nil {
+			return nil, fmt.Errorf("failed to json unmarshal error response '%s' for error code %d: %w", responseBytes, resp.StatusCode, err)
+		}
+		return nil, APIError{
+			StatusCode: resp.StatusCode,
+			Body:       errContent,
+		}
+	}
+
+	var responseStruct ResT
+	err = json.Unmarshal(responseBytes, &responseStruct)
+	if err != nil {
+		return nil, err
+	}
+
+	return &responseStruct, nil
+}
+
 func (c *Client) request(method, requestPath string, query url.Values, body io.Reader, responseStruct interface{}) error {
 	var (
 		req          *http.Request
