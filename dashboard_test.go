@@ -105,6 +105,7 @@ func TestDashboardGet(t *testing.T) {
 			t.Errorf("%d not detected", code)
 		}
 
+		client = gapiTestTools(t, code, "error")
 		_, err = client.DashboardByUID("cIBgcSjkk")
 		if err == nil {
 			t.Errorf("%d not detected", code)
@@ -133,6 +134,7 @@ func TestDashboardDelete(t *testing.T) {
 			t.Errorf("%d not detected", code)
 		}
 
+		client = gapiTestTools(t, code, "error")
 		err = client.DeleteDashboardByUID("cIBgcSjkk")
 		if err == nil {
 			t.Errorf("%d not detected", code)

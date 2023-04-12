@@ -35,6 +35,10 @@ func gapiTestToolsFromCalls(t *testing.T, calls []mockServerCall) *Client {
 	}
 
 	mock.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(mock.upcomingCalls) == 0 {
+			t.Errorf("Missing handler for request: %s %s", r.Method, r.URL.Path)
+			return
+		}
 		call := mock.upcomingCalls[0]
 		if len(calls) > 1 {
 			mock.upcomingCalls = mock.upcomingCalls[1:]
