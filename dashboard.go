@@ -73,6 +73,43 @@ func (c *Client) NewDashboard(dashboard Dashboard) (*DashboardSaveResponse, erro
 	return result, err
 }
 
+type DashboardImportInput struct {
+	Name     string `json:"name"`     // "DS_PROMETHEUS",
+	PluginId string `json:"pluginId"` // "prometheus",
+	Type     string `json:"type"`     // "datasource"
+	Value    string `json:"value"`    // "6fx8MQL4k"
+}
+
+type DashboardImportRequest struct {
+	Dashboard map[string]interface{} `json:"dashboard"`
+	FolderUID string                 `json:"folderUid"`
+	Inputs    []DashboardImportInput `json:"inputs"`
+	Overwrite bool                   `json:"overwrite"`
+}
+
+type DashboardImportResponse struct {
+	UID              string `json:"uid"`              // :"rYdddlPWk",
+	PluginId         string `json:"pluginId"`         // :"",
+	Title            string `json:"title"`            // :"Node Exporter Full",
+	Imported         bool   `json:"imported"`         // :true,
+	ImportedUri      string `json:"importedUri"`      // :"db/node-exporter-full",
+	ImportedUrl      string `json:"importedUrl"`      // :"/d/rYdddlPWk/node-exporter-full",
+	Slug             string `json:"slug"`             // :"node-exporter-full",
+	DashboardId      int    `json:"dashboardId"`      // :27,
+	FolderId         int    `json:"folderId"`         // :0,
+	FolderUid        string `json:"folderUid"`        // :"",
+	ImportedRevision int    `json:"importedRevision"` // :1,
+	Revision         int    `json:"revision"`         // :1,
+	Description      string `json:"description"`      // :"",
+	Path             string `json:"path"`             // :"",
+	Removed          bool   `json:"removed"`          // :false,
+}
+
+// NewDashboard creates a new Grafana dashboard.
+func (c *Client) ImportDashboard(req DashboardImportRequest) (*DashboardImportResponse, error) {
+	return Request[DashboardImportRequest, DashboardImportResponse](c, "POST", "/api/dashboards/import", nil, &req)
+}
+
 // Dashboards fetches and returns all dashboards.
 func (c *Client) Dashboards() ([]FolderDashboardSearchResponse, error) {
 	const limit = 1000

@@ -16,6 +16,24 @@ const (
 		"version": 1
 	}`
 
+	importedResponse = `{
+		"uid":"nErXDvCkzz",
+		"pluginId":"",
+		"title":"test",
+		"imported":true,
+		"importedUri":"db/test",
+		"importedUrl":"/d/nErXDvCkzz/test",
+		"slug":"test",
+		"dashboardId":1,
+		"folderId":0,
+		"folderUid":"",
+		"importedRevision":1,
+		"revision":1,
+		"description":"",
+		"path":"",
+		"removed":false
+	}`
+
 	getDashboardResponse = `{
 		"dashboard": {
 			"id": 1,
@@ -69,6 +87,37 @@ func TestDashboardCreateAndUpdate(t *testing.T) {
 	for _, code := range []int{400, 401, 403, 412} {
 		client = gapiTestTools(t, code, "error")
 		_, err = client.NewDashboard(dashboard)
+		if err == nil {
+			t.Errorf("%d not detected", code)
+		}
+	}
+}
+
+func TestDashboardImport(t *testing.T) {
+	client := gapiTestTools(t, 200, importedResponse)
+
+	dashboard := DashboardImportRequest{
+		Dashboard: map[string]interface{}{
+			"title": "test",
+		},
+		FolderUID: "l3KqBxCMz",
+		Overwrite: false,
+	}
+
+	resp, err := client.ImportDashboard(dashboard)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log(pretty.PrettyFormat(resp))
+
+	if resp.UID != "nErXDvCkzz" {
+		t.Errorf("Invalid uid - %s, Expected %s", resp.UID, "nErXDvCkzz")
+	}
+
+	for _, code := range []int{400, 401, 403, 412} {
+		client = gapiTestTools(t, code, "error")
+		_, err = client.ImportDashboard(dashboard)
 		if err == nil {
 			t.Errorf("%d not detected", code)
 		}
